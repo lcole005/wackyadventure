@@ -1,0 +1,72 @@
+/* Basic Reset */
+body, h1, h2, h3, p, ul, ol, img {
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    background: #fafafa;
+    color: #333;
+    line-height: 1.6;
+}
+
+/* Header */
+header {
+    background: #6a5acd;
+    color: white;
+    padding: 20px;
+    text-align: center;
+}
+
+nav a {
+    color: white;
+    margin: 0 15px;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+nav a:hover {
+    text-decoration: underline;
+}
+
+/* Content Sections */
+.content {
+    width: 80%;
+    margin: 30px auto;
+}
+
+h2 {
+    margin-top: 25px;
+    color: #6a5acd;
+}
+
+img {
+    width: 60%;
+    display: block;
+    margin: 15px auto;
+    border-radius: 10px;
+}
+
+/* Gallery */
+.gallery {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    justify-content: center;
+}
+
+.gallery img {
+    width: 250px;
+    height: auto;
+    border-radius: 8px;
+}
+
+/* Footer */
+footer {
+    text-align: center;
+    padding: 20px;
+    background: #6a5acd;
+    color: white;
+    margin-top: 40px;
+}

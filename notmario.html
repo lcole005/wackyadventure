@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Mario Game – Fireballs & Classic Fire Mario</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #111; font-family: Arial, sans-serif; overflow: hidden; }
+
+  #gameContainer {
+    position: relative;
+    width: 960px;
+    height: 540px;
+    margin: 20px auto;
+    border: 4px solid #fff;
+    background: linear-gradient(#5c94fc 0%, #5c94fc 60%, #5b8d3a 60%, #5b8d3a 100%);
+    overflow: auto;
+  }
+#navBar {
+    background: #003366;
+    padding: 12px;
+    text-align: center;
+    position: sticky;
+    top: 0;
+    z-index: 9999;
+}
+
+#navBar a {
+    color: white;
+    margin: 0 20px;
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 18px;
+}
+
+#navBar a:hover {
+    text-decoration: underline;
+}
+  #hud {
+    position: absolute; top: 8px; left: 8px;
+    color: #fff; font-size: 16px; text-shadow: 2px 2px #000; z-index: 10;
+  }
+  #hud span { margin-right: 20px; }
+
+  #message {
+    position: absolute; width: 100%; text-align: center; top: 45%;
+    font-size: 28px; color: #fff; text-shadow: 2px 2px #000;
+    display: none; z-index: 20;
+  }
+
+  .entity { position: absolute; }
+
+  /* Player – default */
+  #player {
+    width: 32px;
+    height: 46px;
+    background: #fbd000;
+    border: 3px solid #cc8a00;
+    border-radius: 4px;
+    transition: background 0.1s, border-color 0.1s;
+  }
+
+  /* Classic Fire Mario: white hat/shirt, red overalls feel */
+  #player.fire {
+    background: linear-gradient(to bottom, #ffffff 0%, #ffffff 40%, #e53935 41%, #b71c1c 100%);
+    border-color: #8b0000;
+  }
+
+  .ground    { background: #8b4513; border-top: 4px solid #c57f3f; }
+  .block     { background: #b5651d; border: 3px solid #6b3a0a; }
+  .qblock    {
+    background: #f2a100; border: 3px solid #b56e00;
+    color: #7a3f00; font-weight: bold; font-size: 24px;
+    text-align: center; line-height: 32px;
+  }
+  .used-block { background: #d9d9d9; border: 3px solid #999; }
+
+  .enemy {
+    width: 32px; height: 32px;
+    background: #8b3e3e;
+    border-radius: 50% 50% 0 0;
+    border: 3px solid #4a1f1f;
+    overflow: hidden;
+  }
+  .enemy::before, .enemy::after {
+    content: '';
+    position: absolute;
+    bottom: 0; width: 10px; height: 12px;
+    background: #4a1f1f;
+  }
+  .enemy::before { left: 4px; }
+  .enemy::after  { right: 4px; }
+
+  .mushroom {
+    width: 28px; height: 28px;
+    background: radial-gradient(circle at 50% 30%, #fff 0, #fff 35%, #ff3b3b 36%, #ff3b3b 100%);
+    border: 3px solid #8b0000;
+    border-radius: 50%;
+  }
+
+  .flower {
+    width: 24px; height: 32px;
+    background: radial-gradient(circle at 50% 40%, #fff 0, #fff 40%, #ff9800 41%, #ff9800 100%);
+    border-radius: 60% 60% 40% 40%;
+    border: 3px solid #ff5722;
+  }
+
+  .coin {
+    width: 20px; height: 28px;
+    background: radial-gradient(circle at 50% 50%, #fff9c4 0, #ffd600 40%, #ffb300 100%);
+    border-radius: 50%;
+    border: 2px solid #c47f00;
+  }
+
+  .pipe {
+    background: #1b5e20;
+    border: 4px solid #0b3d10;
+  }
+  .pipe-top {
+    position: absolute;
+    left: -6px; top: -12px;
+    width: calc(100% + 12px);
+    height: 16px;
+    background: #2e7d32;
+    border: 4px solid #0b3d10;
+  }
+
+  #castle {
+    width: 96px; height: 96px;
+    background: #5d4037;
+    border: 4px solid #3e2723;
+    bottom: 64px;
+  }
+  #flagPole { width: 6px; height: 170px; background: #eee; bottom: 64px; }
+  #flag {
+    width: 32px; height: 24px; background: #00c853;
+    border: 2px solid #006a2c; position: absolute;
+    top: 10px; left: 6px;
+  }
+
+  .cloud {
+    width: 80px; height: 40px; background: #fff; border-radius: 40px;
+    box-shadow: 20px 0 0 #fff, 40px 0 0 #fff; opacity: 0.9;
+  }
+
+  .underground {
+    background: radial-gradient(circle at top, #424242 0, #212121 40%, #000 100%);
+  }
+
+  /* Fireball */
+  .fireball {
+    width: 14px; height: 14px;
+    background: radial-gradient(circle at 50% 50%, #fff3e0 0, #ff9800 40%, #e65100 100%);
+    border-radius: 50%;
+    border: 2px solid #bf360c;
+  }
+</style>
+</head>
+<body>
+  <div id="navBar">
+    <a href="index.html">Resume</a>
+    <a href="wackyadventure.html">Wacky Adventure</a>
+</div>
+<div id="gameContainer">
+  <div id="hud">
+    <span id="scoreLabel">Score: 0</span>
+    <span id="coinsLabel">Coins: 0</span>
+    <span id="livesLabel">Lives: 3</span>
+    <span id="timeLabel">Time: 300</span>
+  </div>
+  <div id="message"></div>
+  <div id="player" class="entity"></div>
+</div>
+
+<script>
+(function() {
+  const container  = document.getElementById('gameContainer');
+  const playerEl   = document.getElementById('player');
+  const scoreLabel = document.getElementById('scoreLabel');
+  const coinsLabel = document.getElementById('coinsLabel');
+  const livesLabel = document.getElementById('livesLabel');
+  const timeLabel  = document.getElementById('timeLabel');
+  const messageEl  = document.getElementById('message');
+
+  // Simple sounds
+  const sounds = {
+    jump:    new Audio('https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg'),
+    coin:    new Audio('https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg'),
+    powerup: new Audio('https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg'),
+    stomp:   new Audio('https://actions.google.com/sounds/v1/cartoon/pop.ogg'),
+    flag:    new Audio('https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg'),
+    death:   new Audio('https://actions.google.com/sounds/v1/cartoon/concussive_hit_guitar_boing.ogg'),
+    fireball:new Audio('https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg')
+  };
+  function playSound(name) {
+    const s = sounds[name];
+    if (!s) return;
+    s.currentTime = 0;
+    s.play().catch(()=>{});
+  }
+
+  const WORLD_WIDTH = 3200;
+  let score = 0, coins = 0, lives = 3, timeLeft = 300;
+  let gameOver = false, levelComplete = false, currentArea = 'overworld';
+
+  const player = {
+    x: 80, y: 80, w: 32, h: 46,
+    vx: 0, vy: 0,
+    speed: 3,
+    jumpStrength: 14,
+    jumpHoldBoost: 0.35,
+    jumpHoldFrames: 12,
+    jumpHeld: 0,
+    onGround: false,
+    fireForm: false,
+    facing: 1   // 1 = right, -1 = left
+  };
+  const keys = { left: false, right: false, up: false, down: false, run: false, fire: false };
+
+  const solids = [], qBlocks = [], enemies = [], mushrooms = [], flowers = [], coinsWorld = [], pipes = [], fireballs = [];
+  let castle, flagPole, flag;
+  let pipeEntry = null, pipeExit = null;
+
+  function makeDiv(cls, w, h, x, y) {
+    const d = document.createElement('div');
+    d.className = cls + ' entity';
+    d.style.width = w + 'px';
+    d.style.height = h + 'px';
+    d.style.left = x + 'px';
+    d.style.bottom = y + 'px';
+    container.appendChild(d);
+    return d;
+  }
+
+  function addGround(x, width, height=64) {
+    const el = makeDiv('ground', width, height, x, 0);
+    solids.push({ x, y:0, w:width, h:height, el });
+  }
+  function addBlock(x,y) {
+    const el = makeDiv('block',32,32,x,y);
+    solids.push({ x, y, w:32, h:32, el, type:'block' });
+  }
+  function addQBlock(x,y,content='coin') {
+    const el = makeDiv('qblock',32,32,x,y);
+    el.textContent='?';
+    const obj = { x, y, w:32, h:32, el, hit:false, type:'qblock', content };
+    solids.push(obj); qBlocks.push(obj);
+  }
+  function addCoin(x,y) {
+    const el = makeDiv('coin',20,28,x,y);
+    coinsWorld.push({x,y,w:20,h:28,el,alive:true});
+  }
+  function addEnemy(x,y) {
+    const el = makeDiv('enemy',32,32,x,y);
+    enemies.push({x,y,w:32,h:32,vx:-1.1,vy:0,el,alive:true,frame:0});
+  }
+  function spawnMushroom(x,y) {
+    const el = makeDiv('mushroom',28,28,x,y);
+    mushrooms.push({x,y,w:28,h:28,vx:1.4,vy:0,el,alive:true});
+  }
+  function spawnFlower(x,y) {
+    const el = makeDiv('flower',24,32,x+4,y);
+    flowers.push({x:x+4,y,w:24,h:32,vx:0,vy:0,el,alive:true});
+  }
+  function addPipe(x,y,h,areaTag) {
+    const el = makeDiv('pipe',48,h,x,y);
+    const top = document.createElement('div');
+    top.className='pipe-top';
+    el.appendChild(top);
+    const obj = {x,y,w:48,h,el,area:areaTag};
+    pipes.push(obj);
+    solids.push({x,y,w:48,h,el:el,type:'pipe'});
+    return obj;
+  }
+
+  function updatePlayerVisual() {
+    if (player.fireForm) playerEl.classList.add('fire');
+    else playerEl.classList.remove('fire');
+  }
+
+  // Build overworld
+  function buildAreaOverworld() {
+    currentArea = 'overworld';
+    container.classList.remove('underground');
+    container.scrollLeft = 0;
+
+    Array.from(container.querySelectorAll('.entity')).forEach(el=>{
+      if(el!==playerEl) container.removeChild(el);
+    });
+    solids.length = 0; qBlocks.length=0; enemies.length=0;
+    mushrooms.length=0; flowers.length=0; coinsWorld.length=0; pipes.length=0; fireballs.length=0;
+
+    addGround(0, WORLD_WIDTH);
+
+    // Clouds
+    [[80,380],[400,420],[700,390],[1200,400],[2000,420],[2600,410]].forEach(([x,y])=>{
+      const c = document.createElement('div');
+      c.className = 'cloud entity';
+      c.style.left = x + 'px';
+      c.style.bottom = y + 'px';
+      container.appendChild(c);
+    });
+
+    // Section 1
+    addQBlock(200,128,'mushroom');
+    addBlock(232,128); addBlock(264,128);
+    addCoin(320,160);
+    addEnemy(420,64);
+
+    // Section 2
+    addBlock(600,64); addBlock(632,64); addBlock(664,96); addBlock(696,128);
+    addQBlock(728,128,'coin');
+    addEnemy(760,64);
+
+    // Floating coins arc
+    for (let i=0;i<5;i++){
+      addCoin(900+i*24, 220 + (i%2)*20);
+    }
+
+    // Section 3
+    addBlock(1050,200); addBlock(1082,200); addQBlock(1114,200,'flower'); addBlock(1146,200);
+    addEnemy(1200,64);
+
+    // Pipe to underground
+    pipeEntry = addPipe(1500,64,80,'down');
+    addCoin(1520,160);
+    addEnemy(1600,64);
+
+    // Late section and castle
+    addQBlock(1900,128,'coin');
+    addBlock(1932,128); addBlock(1964,128);
+    for(let i=0;i<6;i++){ addBlock(2200+i*32,i*32); }
+    const castleX = 2900;
+    castle = makeDiv('',96,96,castleX,64); castle.id='castle';
+    flagPole = makeDiv('',6,170,castleX-40,64); flagPole.id='flagPole';
+    flag = document.createElement('div'); flag.id='flag'; flagPole.appendChild(flag);
+
+    // Exit from underground
+    pipeExit = addPipe(2600,64,80,'up');
+
+    // Reset player
+    player.x = 80; player.y = 80; player.vx=0; player.vy=0;
+    updatePlayerVisual();
+  }
+
+  // Build underground
+  function buildAreaUnderground() {
+    currentArea = 'underground';
+    container.classList.add('underground');
+    container.scrollLeft = 0;
+
+    Array.from(container.querySelectorAll('.entity')).forEach(el=>{
+      if(el!==playerEl) container.removeChild(el);
+    });
+    solids.length=0; qBlocks.length=0; enemies.length=0;
+    mushrooms.length=0; flowers.length=0; coinsWorld.length=0; pipes.length=0; fireballs.length=0;
+
+    addGround(0, 1200, 40);
+
+    for(let i=0;i<5;i++){
+      addBlock(200+i*32,120);
+    }
+    addQBlock(260,152,'coin');
+    addCoin(300,200);
+    addCoin(340,220);
+
+    addEnemy(500,40);
+    addEnemy(650,40);
+
+    pipeExit = addPipe(1000,40,80,'up');
+
+    player.x = 100; player.y = 120; player.vx=0; player.vy=0;
+    updatePlayerVisual();
+  }
+
+  window.addEventListener('keydown',e=>{
+    if(gameOver||levelComplete){
+      if(e.key==='Enter') restartGame();
+      return;
+    }
+    if(e.key==='ArrowLeft'||e.key==='a') keys.left=true;
+    if(e.key==='ArrowRight'||e.key==='d') keys.right=true;
+    if(e.key==='ArrowUp'||e.key==='w'||e.key===' ') keys.up=true;
+    if(e.key==='ArrowDown'||e.key==='s') keys.down=true;
+    if(e.key==='Shift') keys.run=true;
+    if(e.key==='x' || e.key==='X' || e.key==='k' || e.key==='K') keys.fire = true;
+  });
+  window.addEventListener('keyup',e=>{
+    if(e.key==='ArrowLeft'||e.key==='a') keys.left=false;
+    if(e.key==='ArrowRight'||e.key==='d') keys.right=false;
+    if(e.key==='ArrowUp'||e.key==='w'||e.key===' ') keys.up=false;
+    if(e.key==='ArrowDown'||e.key==='s') keys.down=false;
+    if(e.key==='Shift') keys.run=false;
+    if(e.key==='x' || e.key==='X' || e.key==='k' || e.key==='K') keys.fire = false;
+  });
+
+  function intersect(a,b){
+    return !(a.x+a.w<=b.x||a.x>=b.x+b.w||a.y+a.h<=b.y||a.y>=b.y+b.h);
+  }
+
+  function addScore(amount){ score+=amount; scoreLabel.textContent='Score: '+score; }
+  function addCoinScore() {
+    coins++;
+    if (coins>=100) { coins=0; lives++; livesLabel.textContent='Lives: '+lives; }
+    coinsLabel.textContent='Coins: '+coins;
+    addScore(200);
+  }
+
+  function loseLife(){
+    playSound('death');
+    lives--;
+    livesLabel.textContent='Lives: '+lives;
+    if(lives<=0){
+      gameOver=true;
+      messageEl.textContent='GAME OVER - Press Enter';
+      messageEl.style.display='block';
+    } else {
+      if(currentArea==='overworld') {
+        player.x=80; player.y=80;
+      } else {
+        player.x=100; player.y=120;
+      }
+      player.vx=0; player.vy=0;
+    }
+  }
+
+  setInterval(()=>{
+    if(gameOver||levelComplete) return;
+    timeLeft--;
+    if(timeLeft<=0){ timeLeft=0; loseLife(); }
+    timeLabel.textContent='Time: '+timeLeft;
+  },1000);
+
+  // Physics
+  const GRAVITY = 0.55;
+  const FALL_GRAVITY = 0.75;
+  const GROUND_ACCEL = 0.55;
+  const AIR_ACCEL = 0.35;
+  const SKID = 0.82;
+  const MAX_VX = 6.2;
+  const MAX_VY = 20;
+  const RUN_MULTIPLIER = 1.4;
+
+  // Fireball constants – SMB1-style, medium bounce
+  const FIREBALL_SPEED = 6;
+  const FIREBALL_BOUNCE_DAMP = 0.7;   // lose some vertical speed on bounce
+  const FIREBALL_GRAVITY = 0.5;
+  const FIREBALL_MAX_BOUNCES = 5;
+  const FIREBALL_MAX_DISTANCE = 500;
+  const FIREBALL_MAX_ACTIVE = 2;
+
+  function spawnFireball() {
+    if (!player.fireForm) return;
+    // Limit active fireballs
+    const active = fireballs.filter(f=>f.alive);
+    if (active.length >= FIREBALL_MAX_ACTIVE) return;
+
+    const dir = player.facing || 1;
+    const startX = player.x + (dir > 0 ? player.w : -10);
+    const startY = player.y + player.h * 0.4;
+
+    const el = makeDiv('fireball',14,14,startX,startY);
+    fireballs.push({
+      x: startX,
+      y: startY,
+      w: 14,
+      h: 14,
+      vx: FIREBALL_SPEED * dir,
+      vy: 2,
+      el,
+      alive: true,
+      bounces: 0,
+      traveled: 0
+    });
+    playSound('fireball');
+  }
+
+  function handleFireballShooting() {
+    // Fire on discrete press, not held
+    if (keys.fire && player.fireForm) {
+      // Simple cooldown: only spawn when we detect a rising edge
+      if (!handleFireballShooting.lastState) {
+        spawnFireball();
+      }
+      handleFireballShooting.lastState = true;
+    } else {
+      handleFireballShooting.lastState = false;
+    }
+  }
+  handleFireballShooting.lastState = false;
+
+  function updateFireballs() {
+    for (const f of fireballs) {
+      if (!f.alive) continue;
+
+      // Horizontal move
+      const oldX = f.x;
+      f.x += f.vx;
+      f.traveled += Math.abs(f.x - oldX);
+
+      // Vertical move with gravity
+      f.vy -= FIREBALL_GRAVITY;
+      f.y += f.vy;
+
+      let fBox = {x:f.x, y:f.y, w:f.w, h:f.h};
+
+      // Collide with solids
+      for (const s of solids) {
+        const box = {x:s.x,y:s.y,w:s.w,h:s.h};
+        if (intersect(fBox, box)) {
+          // Check if hitting ground (coming from above)
+          if (f.y > s.y + s.h - 8 && f.vy < 0) {
+            // Bounce
+            f.y = s.y + s.h;
+            f.vy = Math.abs(f.vy) * FIREBALL_BOUNCE_DAMP + 5; // medium bounce
+            f.bounces++;
+            if (f.bounces > FIREBALL_MAX_BOUNCES) {
+              f.alive = false;
+              f.el.style.display = 'none';
+              break;
+            }
+          } else {
+            // Hit wall/ceiling → destroy
+            f.alive = false;
+            f.el.style.display = 'none';
+            break;
+          }
+          fBox = {x:f.x, y:f.y, w:f.w, h:f.h};
+        }
+      }
+
+      if (!f.alive) continue;
+
+      // Collide with enemies
+      for (const e of enemies) {
+        if (!e.alive) continue;
+        const eBox = {x:e.x,y:e.y,w:e.w,h:e.h};
+        if (intersect(fBox, eBox)) {
+          e.alive = false;
+          e.el.style.display = 'none';
+          f.alive = false;
+          f.el.style.display = 'none';
+          addScore(200);
+          playSound('stomp');
+          break;
+        }
+      }
+
+      if (!f.alive) continue;
+
+      // Lifetime limit (distance)
+      if (f.traveled > FIREBALL_MAX_DISTANCE || f.y < -64) {
+        f.alive = false;
+        f.el.style.display = 'none';
+        continue;
+      }
+
+      // Update DOM
+      f.el.style.left = f.x + 'px';
+      f.el.style.bottom = f.y + 'px';
+    }
+  }
+
+  function update(){
+    if(!gameOver&&!levelComplete){
+      // Movement – acceleration
+      let accelGround = GROUND_ACCEL;
+      let accelAir = AIR_ACCEL;
+      let maxSpeed = MAX_VX;
+
+      if (keys.run) {
+        maxSpeed *= RUN_MULTIPLIER;
+      }
+
+      if(keys.left) {
+        player.vx -= player.onGround ? accelGround : accelAir;
+        player.facing = -1;
+      }
+      if(keys.right) {
+        player.vx += player.onGround ? accelGround : accelAir;
+        player.facing = 1;
+      }
+
+      // Deceleration / skid
+      if(!keys.left && !keys.right) {
+        player.vx *= SKID;
+      }
+
+      // Clamp horizontal speed
+      if(player.vx>maxSpeed)  player.vx=maxSpeed;
+      if(player.vx<-maxSpeed) player.vx=-maxSpeed;
+
+      // Jump start
+      if (keys.up && player.onGround){
+        player.vy = player.jumpStrength;
+        player.onGround = false;
+        player.jumpHeld = player.jumpHoldFrames;
+        playSound('jump');
+      }
+
+      // Variable jump height
+      if (keys.up && player.jumpHeld > 0) {
+        player.vy += player.jumpHoldBoost;
+        player.jumpHeld--;
+      }
+      if (!keys.up) {
+        player.jumpHeld = 0;
+      }
+
+      // Gravity – lighter going up, heavier falling
+      if (player.vy > 0) {
+        player.vy -= GRAVITY;
+      } else {
+        player.vy -= FALL_GRAVITY;
+      }
+      if(player.vy<-MAX_VY) player.vy=-MAX_VY;
+
+      let newX=player.x+player.vx;
+      let newY=player.y+player.vy;
+
+      // Horizontal collisions
+      let pBox={x:newX,y:player.y,w:player.w,h:player.h};
+      for(const s of solids){
+        const box={x:s.x,y:s.y,w:s.w,h:s.h};
+        if(intersect(pBox,box)){
+          if(player.vx>0) newX=s.x-player.w;
+          else if(player.vx<0) newX=s.x+s.w;
+          player.vx=0; pBox.x=newX;
+        }
+      }
+
+      // Vertical collisions
+      player.onGround=false;
+      pBox={x:newX,y:newY,w:player.w,h:player.h};
+      for(const s of solids){
+        const box={x:s.x,y:s.y,w:s.w,h:s.h};
+        if(intersect(pBox,box)){
+          if(player.vy>0){
+            newY=s.y-player.h;
+            if(s.type==='qblock' && !s.hit){
+              s.hit=true;
+              s.el.className = 'used-block entity';
+              s.el.textContent='';
+              if(s.content==='coin'){ playSound('coin'); addCoinScore(); }
+              else if(s.content==='mushroom'){ playSound('powerup'); spawnMushroom(s.x,s.y+40); }
+              else if(s.content==='flower'){ playSound('powerup'); spawnFlower(s.x,s.y+40); }
+              addScore(50);
+            }
+          } else if(player.vy<0){
+            newY=s.y+s.h;
+            player.onGround=true;
+          }
+          player.vy=0; pBox.y=newY;
+        }
+      }
+
+      // World bounds
+      const worldWidth = currentArea==='overworld'?WORLD_WIDTH:1200;
+      if(newX<0) newX=0;
+      if(newX+player.w>worldWidth) newX=worldWidth-player.w;
+      if(newY<0){
+        loseLife();
+        newY = currentArea==='overworld'?80:120;
+      }
+
+      player.x=newX; player.y=newY;
+      playerEl.style.left=player.x+'px';
+      playerEl.style.bottom=player.y+'px';
+
+      // Camera
+      let camX = player.x - 400;
+      if(camX<0) camX=0;
+      if(camX>worldWidth-960) camX=worldWidth-960;
+      container.scrollLeft=camX;
+
+      // Pipe entering
+      if(keys.down && player.onGround) {
+        for(const p of pipes){
+          const pBoxPipe={x:p.x,y:p.y,w:p.w,h:p.h};
+          if(intersect({x:player.x,y:player.y,w:player.w,h:player.h},pBoxPipe)){
+            if(p.area==='down' && currentArea==='overworld'){
+              buildAreaUnderground();
+            } else if(p.area==='up'){
+              buildAreaOverworld();
+              player.x=p.x; player.y=p.y+p.h+10;
+            }
+            break;
+          }
+        }
+      }
+
+      // Enemies
+      for(const e of enemies){
+        if(!e.alive) continue;
+        e.vy -= (e.vy>0 ? GRAVITY : FALL_GRAVITY);
+        e.frame += 0.15;
+        e.el.style.transform = `scaleX(${e.vx>0?-1:1}) translateY(${Math.sin(e.frame)*1.5}px)`;
+
+        let exNew=e.x+e.vx;
+        let eyNew=e.y+e.vy;
+
+        let eBox={x:exNew,y:e.y,w:e.w,h:e.h};
+        let hit=false;
+        for(const s of solids){
+          const box={x:s.x,y:s.y,w:s.w,h:s.h};
+          if(intersect(eBox,box)){ hit=true; break; }
+        }
+        if(hit){ e.vx*=-1; exNew=e.x+e.vx; }
+
+        eBox={x:exNew,y:eyNew,w:e.w,h:e.h};
+        for(const s of solids){
+          const box={x:s.x,y:s.y,w:s.w,h:s.h};
+          if(intersect(eBox,box)){
+            if(e.vy<0) eyNew=s.y+s.h;
+            else eyNew=s.y-e.h;
+            e.vy=0;
+          }
+        }
+
+        e.x=exNew; e.y=eyNew;
+        e.el.style.left=e.x+'px';
+        e.el.style.bottom=e.y+'px';
+
+        if(e.y<-64){ e.alive=false; e.el.style.display='none'; }
+
+        // player-enemy
+        const pBox2={x:player.x,y:player.y,w:player.w,h:player.h};
+        const eBox2={x:e.x,y:e.y,w:e.w,h:e.h};
+        if(intersect(pBox2,eBox2)){
+          if(player.vy<0 && player.y>=e.y+e.h-5){
+            e.alive=false; e.el.style.display='none';
+            player.vy=player.jumpStrength*0.7;
+            playSound('stomp');
+            addScore(100);
+          } else {
+            if(player.fireForm){
+              player.fireForm=false;
+              updatePlayerVisual();
+            } else {
+              loseLife();
+            }
+          }
+        }
+      }
+
+      // Mushrooms
+      for(const m of mushrooms){
+        if(!m.alive) continue;
+        m.vy -= (m.vy>0 ? GRAVITY : FALL_GRAVITY);
+        let mxNew=m.x+m.vx;
+        let myNew=m.y+m.vy;
+
+        let mBox={x:mxNew,y:m.y,w:m.w,h:m.h};
+        for(const s of solids){
+          const box={x:s.x,y:s.y,w:s.w,h:s.h};
+          if(intersect(mBox,box)){
+            m.vx*=-1;
+            mxNew=m.x+m.vx;
+          }
+        }
+
+        mBox={x:mxNew,y:myNew,w:m.w,h:m.h};
+        for(const s of solids){
+          const box={x:s.x,y:s.y,w:s.w,h:s.h};
+          if(intersect(mBox,box)){
+            if(m.vy<0) myNew=s.y+s.h;
+            else myNew=s.y-m.h;
+            m.vy=0;
+          }
+        }
+
+        m.x=mxNew; m.y=myNew;
+        m.el.style.left=m.x+'px';
+        m.el.style.bottom=m.y+'px';
+
+        const pBox={x:player.x,y:player.y,w:player.w,h:player.h};
+        if(intersect(pBox,mBox)){
+          m.alive=false; m.el.style.display='none';
+          playSound('powerup');
+          lives++; livesLabel.textContent='Lives: '+lives;
+          addScore(500);
+        }
+      }
+
+      // Flowers
+      for(const f of flowers){
+        if(!f.alive) continue;
+        const fBox={x:f.x,y:f.y,w:f.w,h:f.h};
+        const pBox={x:player.x,y:player.y,w:player.w,h:player.h};
+        if(intersect(fBox,pBox)){
+          f.alive=false; f.el.style.display='none';
+          player.fireForm=true;
+          updatePlayerVisual();
+          playSound('powerup');
+          addScore(800);
+        }
+      }
+
+      // World coins
+      for(const c of coinsWorld){
+        if(!c.alive) continue;
+        const cBox={x:c.x,y:c.y,w:c.w,h:c.h};
+        const pBox={x:player.x,y:player.y,w:player.w,h:player.h};
+        if(intersect(cBox,pBox)){
+          c.alive=false; c.el.style.display='none';
+          playSound('coin');
+          addCoinScore();
+        }
+      }
+
+      // Fireball shooting + updates
+      handleFireballShooting();
+      updateFireballs();
+
+      // Castle
+      if(castle && currentArea==='overworld'){
+        const castleBox={
+          x:parseInt(castle.style.left),
+          y:parseInt(castle.style.bottom),
+          w:parseInt(castle.style.width),
+          h:parseInt(castle.style.height)
+        };
+        const pBox={x:player.x,y:player.y,w:player.w,h:player.h};
+        if(intersect(pBox,castleBox)){
+          levelComplete=true;
+          addScore(1000);
+          messageEl.textContent='LEVEL COMPLETE! Score: '+score+' - Press Enter';
+          messageEl.style.display='block';
+          playSound('flag');
+
+          let offset=10;
+          const drop=setInterval(()=>{
+            offset+=2;
+            if(flag){
+              flag.style.top=offset+'px';
+            }
+            if(offset>=120) clearInterval(drop);
+          },40);
+        }
+      }
+    }
+
+    requestAnimationFrame(update);
+  }
+
+  function restartGame(){
+    score=0; coins=0; lives=3; timeLeft=300;
+    gameOver=false; levelComplete=false;
+    player.fireForm=false;
+    updatePlayerVisual();
+    scoreLabel.textContent='Score: '+score;
+    coinsLabel.textContent='Coins: '+coins;
+    livesLabel.textContent='Lives: '+lives;
+    timeLabel.textContent='Time: '+timeLeft;
+    messageEl.style.display='none';
+    buildAreaOverworld();
+  }
+
+  // Init
+  buildAreaOverworld();
+  update();
+})();
+</script>
+</body>
+</html>
